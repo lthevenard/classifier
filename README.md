@@ -22,6 +22,7 @@ O repositorio ja implementa duas etapas do pipeline:
    - Extracao de metadados estruturados.
    - Preservacao do HTML original e geracao de texto plano processavel.
    - Marcacao booleana de materias com estrutura textual legal.
+   - View do recorte analitico de 2025 para a etapa de classificacao.
    - Geracao de uma base SQLite local.
 
 A etapa de classificacao por LLM ainda nao esta implementada.
@@ -119,3 +120,5 @@ O repositorio versiona apenas codigo, testes e documentacao. Arquivos pesados fi
 - `data/database/dou.sqlite`: base SQLite gerada.
 
 Na primeira geracao local registrada, a base SQLite reuniu 120.537 materias logicas a partir de 128.326 fragmentos XML unicos, apos descartar 3.701 duplicatas exatas. O filtro inicial de estrutura legal marcou 68.801 materias como candidatas para triagem/classificacao posterior e 51.736 como filtraveis de partida.
+
+O conjunto de analise definido para a proxima etapa esta na view `vw_materias_analise_2025`: sao 51.523 materias publicadas em 2025 com estrutura legal, a partir das quais o classificador devera identificar os atos normativos de efeitos gerais.

@@ -126,6 +126,41 @@ JOIN edicao_dou e ON e.id = m.edicao_id
 JOIN tipo_ato t ON t.id = m.tipo_ato_id
 JOIN orgao o ON o.id = m.orgao_id;
 
+CREATE VIEW vw_materias_analise_2025 AS
+SELECT
+    m.id,
+    e.data_publicacao,
+    e.pub_name,
+    e.numero_edicao,
+    e.secao_normalizada,
+    t.nome AS tipo_ato,
+    o.caminho_normalizado AS orgao,
+    m.chave_natural,
+    m.id_materia,
+    m.id_oficio,
+    m.nome_interno,
+    m.art_category_raw,
+    m.art_class_prefix,
+    m.pagina_inicial,
+    m.pagina_final,
+    m.qtd_fragmentos,
+    m.identifica,
+    m.data_texto,
+    m.ementa,
+    m.titulo,
+    m.subtitulo,
+    m.tem_estrutura_legal,
+    m.texto_plain_completo,
+    m.texto_html_completo,
+    m.texto_sha256
+FROM materia m
+JOIN edicao_dou e ON e.id = m.edicao_id
+JOIN tipo_ato t ON t.id = m.tipo_ato_id
+JOIN orgao o ON o.id = m.orgao_id
+WHERE e.data_publicacao >= '2025-01-01'
+  AND e.data_publicacao < '2026-01-01'
+  AND m.tem_estrutura_legal = 1;
+
 CREATE VIEW vw_materias_por_orgao AS
 SELECT
     o.caminho_normalizado AS orgao,
@@ -164,6 +199,9 @@ UNION ALL
 SELECT 'materias_sem_estrutura_legal', CAST(COUNT(*) AS TEXT)
 FROM materia
 WHERE tem_estrutura_legal = 0
+UNION ALL
+SELECT 'materias_analise_2025', CAST(COUNT(*) AS TEXT)
+FROM vw_materias_analise_2025
 UNION ALL
 SELECT 'fragmentos_xml', CAST(COUNT(*) AS TEXT) FROM fragmento_xml
 UNION ALL

@@ -186,3 +186,64 @@ def test_build_database_marks_matter_with_legal_structure(tmp_path):
             ).fetchone()[0]
             == 1
         )
+
+
+def test_analysis_view_keeps_only_2025_matters_with_legal_structure(tmp_path):
+    input_dir = tmp_path / "extracted"
+    write_xml(
+        input_dir / "515_20250102_201.xml",
+        article_id="101",
+        id_materia="201",
+        pub_date="02/01/2025",
+        text_html="<p>Art. 1 Fica aprovado o regulamento.</p>",
+    )
+    write_xml(
+        input_dir / "515_20250102_202.xml",
+        article_id="102",
+        id_materia="202",
+        pub_date="02/01/2025",
+        text_html="<p>Despacho de mero expediente.</p>",
+    )
+    write_xml(
+        input_dir / "515_20260102_203.xml",
+        article_id="103",
+        id_materia="203",
+        pub_date="02/01/2026",
+        text_html="<p>Art. 1 Fica aprovado o regulamento.</p>",
+    )
+
+    db_path = tmp_path / "dou.sqlite"
+    stats = build_database(
+        input_dirs=[input_dir],
+        database_path=db_path,
+        progress_interval=0,
+    )
+
+    assert stats.materias == 3
+    assert stats.materias_com_estrutura_legal == 2
+
+    with connect(db_path) as connection:
+        rows = connection.execute(
+            """
+            SELECT id_materia, data_publicacao, tem_estrutura_legal
+            FROM vw_materias_analise_2025
+            ORDER BY id_materia
+            """
+        ).fetchall()
+        assert [dict(row) for row in rows] == [
+            {
+                "id_materia": "201",
+                "data_publicacao": "2025-01-02",
+                "tem_estrutura_legal": 1,
+            }
+        ]
+        assert (
+            connection.execute(
+                """
+                SELECT valor
+                FROM vw_estatisticas_base
+                WHERE metrica = 'materias_analise_2025'
+                """
+            ).fetchone()[0]
+            == "1"
+        )

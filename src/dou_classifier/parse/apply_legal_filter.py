@@ -48,6 +48,8 @@ def ensure_legal_filter_column(connection: sqlite3.Connection) -> None:
 
     connection.executescript(
         """
+        DROP VIEW IF EXISTS vw_estatisticas_base;
+        DROP VIEW IF EXISTS vw_materias_analise_2025;
         DROP VIEW IF EXISTS vw_materias;
         CREATE VIEW vw_materias AS
         SELECT
@@ -76,7 +78,41 @@ def ensure_legal_filter_column(connection: sqlite3.Connection) -> None:
         JOIN tipo_ato t ON t.id = m.tipo_ato_id
         JOIN orgao o ON o.id = m.orgao_id;
 
-        DROP VIEW IF EXISTS vw_estatisticas_base;
+        CREATE VIEW vw_materias_analise_2025 AS
+        SELECT
+            m.id,
+            e.data_publicacao,
+            e.pub_name,
+            e.numero_edicao,
+            e.secao_normalizada,
+            t.nome AS tipo_ato,
+            o.caminho_normalizado AS orgao,
+            m.chave_natural,
+            m.id_materia,
+            m.id_oficio,
+            m.nome_interno,
+            m.art_category_raw,
+            m.art_class_prefix,
+            m.pagina_inicial,
+            m.pagina_final,
+            m.qtd_fragmentos,
+            m.identifica,
+            m.data_texto,
+            m.ementa,
+            m.titulo,
+            m.subtitulo,
+            m.tem_estrutura_legal,
+            m.texto_plain_completo,
+            m.texto_html_completo,
+            m.texto_sha256
+        FROM materia m
+        JOIN edicao_dou e ON e.id = m.edicao_id
+        JOIN tipo_ato t ON t.id = m.tipo_ato_id
+        JOIN orgao o ON o.id = m.orgao_id
+        WHERE e.data_publicacao >= '2025-01-01'
+          AND e.data_publicacao < '2026-01-01'
+          AND m.tem_estrutura_legal = 1;
+
         CREATE VIEW vw_estatisticas_base AS
         SELECT 'edicoes' AS metrica, CAST(COUNT(*) AS TEXT) AS valor FROM edicao_dou
         UNION ALL
@@ -89,6 +125,9 @@ def ensure_legal_filter_column(connection: sqlite3.Connection) -> None:
         SELECT 'materias_sem_estrutura_legal', CAST(COUNT(*) AS TEXT)
         FROM materia
         WHERE tem_estrutura_legal = 0
+        UNION ALL
+        SELECT 'materias_analise_2025', CAST(COUNT(*) AS TEXT)
+        FROM vw_materias_analise_2025
         UNION ALL
         SELECT 'fragmentos_xml', CAST(COUNT(*) AS TEXT) FROM fragmento_xml
         UNION ALL
@@ -148,11 +187,15 @@ def apply_legal_structure_filter(
         connection.executemany(
             "INSERT OR REPLACE INTO base_info (nome, valor) VALUES (?, ?)",
             [
-                ("schema_version", "2"),
+                ("schema_version", "3"),
                 ("legal_structure_filter_applied_at", now),
                 ("legal_structure_filter_total_materias", str(total)),
                 ("legal_structure_filter_matches", str(matched)),
                 ("legal_structure_filter_non_matches", str(total - matched)),
+                (
+                    "analysis_view_2025_total_materias",
+                    str(_count_analysis_view_2025(connection)),
+                ),
             ],
         )
         connection.commit()
@@ -163,6 +206,14 @@ def apply_legal_structure_filter(
             materias_sem_estrutura_legal=total - matched,
             database_path=database_path,
         )
+
+
+def _count_analysis_view_2025(connection: sqlite3.Connection) -> int:
+    return int(
+        connection.execute(
+            "SELECT COUNT(*) FROM vw_materias_analise_2025"
+        ).fetchone()[0]
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:

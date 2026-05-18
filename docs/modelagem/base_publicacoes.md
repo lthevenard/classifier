@@ -232,9 +232,21 @@ Resultado do filtro inicial de estrutura legal:
 
 O filtro procura marcadores textuais como `Art.`, incisos, paragrafos, paragrafo unico e alineas no texto plano completo da materia. Ele e um filtro negativo inicial: materias sem esses marcadores podem ser excluidas da etapa de classificacao por LLM; materias com marcador seguem como candidatas, mas ainda nao sao necessariamente atos normativos.
 
+Recorte analitico adotado para a etapa de classificacao:
+
+| Criterio | Valor |
+| --- | --- |
+| Periodo | Publicacoes de 2025 |
+| Filtro textual | `materia.tem_estrutura_legal = 1` |
+| View canonica | `vw_materias_analise_2025` |
+| Total de materias no recorte | 51.523 |
+
+Esse conjunto de 51.523 materias sera a base de entrada da etapa posterior de classificacao. O objetivo do classificador sera identificar, dentro desse universo, quais publicacoes sao atos normativos de efeitos gerais, isto e, atos regulatorios.
+
 Views iniciais criadas no schema:
 
 - `vw_materias`;
+- `vw_materias_analise_2025`;
 - `vw_materias_por_orgao`;
 - `vw_materias_por_tipo_ato`;
 - `vw_fragmentos_longos`;
@@ -379,6 +391,17 @@ Campos como `artType` e `artCategory` devem ser promovidos para a materia. Na co
 `texto_html_completo` preserva o HTML concatenado dos fragmentos. `texto_plain_completo` e o texto processavel para filtros, busca simples e classificadores futuros.
 
 `tem_estrutura_legal` registra o resultado booleano do filtro regex inicial de estrutura legal. Em SQLite, o valor e armazenado como `INTEGER` com `0` para falso e `1` para verdadeiro.
+
+### `vw_materias_analise_2025`
+
+View que materializa o recorte analitico principal da pesquisa:
+
+```sql
+SELECT *
+FROM vw_materias_analise_2025;
+```
+
+A view inclui apenas materias publicadas entre `2025-01-01` e `2025-12-31`, com `tem_estrutura_legal = 1`. Ela preserva os principais metadados relacionais, identificadores da materia, paginas, texto plano completo, HTML completo e hash do texto. Na base local atual, o resultado tem 51.523 materias.
 
 ### `fragmento_xml`
 

@@ -460,7 +460,7 @@ class SQLiteBaseBuilder:
     def _write_base_info(self) -> None:
         now = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
         info = {
-            "schema_version": "2",
+            "schema_version": "3",
             "generated_at": now,
             "input_dirs": json.dumps(
                 [str(path) for path in self.input_dirs],
@@ -473,6 +473,9 @@ class SQLiteBaseBuilder:
             "multi_fragment_materias": str(len(self.multi_fragment_materias)),
             "legal_structure_filter_matches": str(
                 self._count_legal_structure_matches()
+            ),
+            "analysis_view_2025_total_materias": str(
+                self._count_analysis_view_2025()
             ),
         }
         self._conn.executemany(
@@ -506,6 +509,13 @@ class SQLiteBaseBuilder:
                 FROM materia
                 WHERE tem_estrutura_legal = 1
                 """
+            ).fetchone()[0]
+        )
+
+    def _count_analysis_view_2025(self) -> int:
+        return int(
+            self._conn.execute(
+                "SELECT COUNT(*) FROM vw_materias_analise_2025"
             ).fetchone()[0]
         )
 
