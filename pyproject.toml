@@ -21,6 +21,7 @@ dev = [
 dou-collect-inlabs = "dou_classifier.collect.download_inlabs:main"
 dou-collect-dados-abertos = "dou_classifier.collect.download_dados_abertos:main"
 dou-build-db = "dou_classifier.parse.build_database:main"
+dou-apply-legal-filter = "dou_classifier.parse.apply_legal_filter:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

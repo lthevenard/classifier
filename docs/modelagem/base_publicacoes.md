@@ -175,9 +175,11 @@ A construcao da base foi implementada com biblioteca padrao do Python, sem novas
 | Arquivo | Funcao |
 | --- | --- |
 | `src/dou_classifier/parse/dou_xml.py` | Parser dos XMLs, normalizacao de metadados e conversao de HTML para texto plano. |
+| `src/dou_classifier/parse/legal_structure.py` | Heuristica regex para identificar marcadores textuais de estrutura normativa. |
 | `src/dou_classifier/parse/schema.sql` | Schema SQLite versionado, com tabelas, indices e views. |
 | `src/dou_classifier/parse/build_database.py` | CLI e rotina de construcao da base. |
-| `tests/parse/test_build_database.py` | Testes de deduplicacao, montagem de materias multi-fragmento e IDs repetidos. |
+| `src/dou_classifier/parse/apply_legal_filter.py` | CLI para aplicar/reaplicar o filtro de estrutura legal em bases existentes. |
+| `tests/parse/` | Testes de deduplicacao, montagem de materias multi-fragmento, IDs repetidos e filtro de estrutura legal. |
 
 CLI disponivel:
 
@@ -187,6 +189,15 @@ CLI disponivel:
   --database-path data/database/dou.sqlite \
   --force \
   --progress-interval 5000
+```
+
+Aplicacao/reaplicacao do filtro de estrutura legal:
+
+```bash
+.venv/bin/dou-apply-legal-filter \
+  --database-path data/database/dou.sqlite \
+  --batch-size 1000 \
+  --progress-interval 10000
 ```
 
 Resultado da primeira geracao local:
@@ -206,6 +217,20 @@ Resultado da primeira geracao local:
 | Orgaos na arvore normalizada | 2.434 |
 | Tipos de ato | 64 |
 | Midias nao vazias preservadas | 269 |
+
+Resultado do filtro inicial de estrutura legal:
+
+| Medida | Valor |
+| --- | ---: |
+| Coluna criada | `materia.tem_estrutura_legal` |
+| Total de materias avaliadas | 120.537 |
+| Materias com estrutura legal | 68.801 |
+| Materias sem estrutura legal | 51.736 |
+| Parcela mantida para triagem/classificacao posterior | 57,1% |
+| Parcela filtrada de partida | 42,9% |
+| Timestamp de aplicacao | `2026-05-18T19:42:47+00:00` |
+
+O filtro procura marcadores textuais como `Art.`, incisos, paragrafos, paragrafo unico e alineas no texto plano completo da materia. Ele e um filtro negativo inicial: materias sem esses marcadores podem ser excluidas da etapa de classificacao por LLM; materias com marcador seguem como candidatas, mas ainda nao sao necessariamente atos normativos.
 
 Views iniciais criadas no schema:
 
@@ -270,6 +295,7 @@ erDiagram
         text texto_html_completo
         text texto_plain_completo
         text texto_sha256
+        integer tem_estrutura_legal
     }
 
     FRAGMENTO_XML {
@@ -351,6 +377,8 @@ sha256(pubDate | pubName | editionNumber | idMateria | idOficio | name)
 Campos como `artType` e `artCategory` devem ser promovidos para a materia. Na coleta atual, essa chave nao agrupou fragmentos com `artType` ou `artCategory` divergentes. Mesmo assim, o parser deve validar essa invariancia e registrar erro/alerta se aparecer divergencia futura.
 
 `texto_html_completo` preserva o HTML concatenado dos fragmentos. `texto_plain_completo` e o texto processavel para filtros, busca simples e classificadores futuros.
+
+`tem_estrutura_legal` registra o resultado booleano do filtro regex inicial de estrutura legal. Em SQLite, o valor e armazenado como `INTEGER` com `0` para falso e `1` para verdadeiro.
 
 ### `fragmento_xml`
 

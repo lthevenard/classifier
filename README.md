@@ -21,6 +21,7 @@ O repositorio ja implementa duas etapas do pipeline:
    - Agrupamento de fragmentos XML em materias logicas.
    - Extracao de metadados estruturados.
    - Preservacao do HTML original e geracao de texto plano processavel.
+   - Marcacao booleana de materias com estrutura textual legal.
    - Geracao de uma base SQLite local.
 
 A etapa de classificacao por LLM ainda nao esta implementada.
@@ -89,6 +90,13 @@ Construcao da base SQLite:
   --force
 ```
 
+Aplicacao do filtro de estrutura legal em uma base existente:
+
+```bash
+.venv/bin/dou-apply-legal-filter \
+  --database-path data/database/dou.sqlite
+```
+
 Rodar testes:
 
 ```bash
@@ -110,4 +118,4 @@ O repositorio versiona apenas codigo, testes e documentacao. Arquivos pesados fi
 - `data/manifests/`: manifestos locais de coleta;
 - `data/database/dou.sqlite`: base SQLite gerada.
 
-Na primeira geracao local registrada, a base SQLite reuniu 120.537 materias logicas a partir de 128.326 fragmentos XML unicos, apos descartar 3.701 duplicatas exatas.
+Na primeira geracao local registrada, a base SQLite reuniu 120.537 materias logicas a partir de 128.326 fragmentos XML unicos, apos descartar 3.701 duplicatas exatas. O filtro inicial de estrutura legal marcou 68.801 materias como candidatas para triagem/classificacao posterior e 51.736 como filtraveis de partida.

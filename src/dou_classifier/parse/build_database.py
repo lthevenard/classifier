@@ -22,6 +22,7 @@ from dou_classifier.parse.dou_xml import (
     sha256_text,
     split_category,
 )
+from dou_classifier.parse.legal_structure import has_legal_structure
 
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
@@ -38,6 +39,7 @@ class BuildStats:
     orgaos: int
     tipos_ato: int
     midias: int
+    materias_com_estrutura_legal: int
     database_path: Path
 
 
@@ -233,6 +235,7 @@ class SQLiteBaseBuilder:
         orgao_id = self._get_or_create_orgao(fragment.art_category)
         page_start, page_end = minmax_int([fragment.number_page])
         text_sha256 = sha256_text(fragment.texto_plain)
+        tem_estrutura_legal = int(has_legal_structure(fragment.texto_plain))
 
         cursor = self._conn.execute(
             """
@@ -241,9 +244,9 @@ class SQLiteBaseBuilder:
                 id_oficio, nome_interno, art_category_raw, art_class_prefix,
                 pagina_inicial, pagina_final, qtd_fragmentos, identifica,
                 data_texto, ementa, titulo, subtitulo, texto_html_completo,
-                texto_plain_completo, texto_sha256
+                texto_plain_completo, texto_sha256, tem_estrutura_legal
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 edicao_id,
@@ -266,6 +269,7 @@ class SQLiteBaseBuilder:
                 fragment.texto_html,
                 fragment.texto_plain,
                 text_sha256,
+                tem_estrutura_legal,
             ),
         )
         state = MatterState(
@@ -425,7 +429,8 @@ class SQLiteBaseBuilder:
                     subtitulo = ?,
                     texto_html_completo = ?,
                     texto_plain_completo = ?,
-                    texto_sha256 = ?
+                    texto_sha256 = ?,
+                    tem_estrutura_legal = ?
                 WHERE id = ?
                 """,
                 (
@@ -440,6 +445,7 @@ class SQLiteBaseBuilder:
                     texto_html,
                     texto_plain,
                     sha256_text(texto_plain),
+                    int(has_legal_structure(texto_plain)),
                     matter_id,
                 ),
             )
@@ -454,7 +460,7 @@ class SQLiteBaseBuilder:
     def _write_base_info(self) -> None:
         now = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
         info = {
-            "schema_version": "1",
+            "schema_version": "2",
             "generated_at": now,
             "input_dirs": json.dumps(
                 [str(path) for path in self.input_dirs],
@@ -465,6 +471,9 @@ class SQLiteBaseBuilder:
             "duplicate_files": str(self.stats["duplicate_files"]),
             "unique_fragments": str(self.stats["unique_fragments"]),
             "multi_fragment_materias": str(len(self.multi_fragment_materias)),
+            "legal_structure_filter_matches": str(
+                self._count_legal_structure_matches()
+            ),
         }
         self._conn.executemany(
             "INSERT OR REPLACE INTO base_info (nome, valor) VALUES (?, ?)",
@@ -485,7 +494,19 @@ class SQLiteBaseBuilder:
             orgaos=count_table("orgao"),
             tipos_ato=count_table("tipo_ato"),
             midias=count_table("fragmento_midia"),
+            materias_com_estrutura_legal=self._count_legal_structure_matches(),
             database_path=self.database_path,
+        )
+
+    def _count_legal_structure_matches(self) -> int:
+        return int(
+            self._conn.execute(
+                """
+                SELECT COUNT(*)
+                FROM materia
+                WHERE tem_estrutura_legal = 1
+                """
+            ).fetchone()[0]
         )
 
     def _vacuum(self) -> None:
@@ -596,10 +617,10 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  orgaos: {stats.orgaos}")
     print(f"  tipos_ato: {stats.tipos_ato}")
     print(f"  midias: {stats.midias}")
+    print(f"  materias_com_estrutura_legal: {stats.materias_com_estrutura_legal}")
     print(f"Base SQLite: {stats.database_path}")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -65,6 +65,12 @@ def test_build_database_discards_exact_duplicate_xml_files(tmp_path):
     with connect(db_path) as connection:
         assert connection.execute("SELECT COUNT(*) FROM fragmento_xml").fetchone()[0] == 1
         assert connection.execute("SELECT COUNT(*) FROM materia").fetchone()[0] == 1
+        assert (
+            connection.execute(
+                "SELECT tem_estrutura_legal FROM materia"
+            ).fetchone()[0]
+            == 0
+        )
 
 
 def test_build_database_assembles_multi_fragment_matter_in_order(tmp_path):
@@ -103,6 +109,7 @@ def test_build_database_assembles_multi_fragment_matter_in_order(tmp_path):
         assert matter["pagina_inicial"] == 1
         assert matter["pagina_final"] == 2
         assert matter["texto_plain_completo"] == "Primeiro fragmento\n\nSegundo fragmento"
+        assert matter["tem_estrutura_legal"] == 0
 
         rows = connection.execute(
             "SELECT nome_arquivo, ordem_fragmento FROM fragmento_xml ORDER BY ordem_fragmento"
@@ -154,3 +161,28 @@ def test_build_database_does_not_collapse_same_ids_on_different_dates(tmp_path):
         ]
         assert dates == ["2026-01-02", "2026-01-03"]
 
+
+def test_build_database_marks_matter_with_legal_structure(tmp_path):
+    input_dir = tmp_path / "extracted"
+    write_xml(
+        input_dir / "515_20260102_200.xml",
+        text_html="<p>PORTARIA TESTE</p><p>Art. 1 Fica aprovado o regulamento.</p>",
+    )
+
+    db_path = tmp_path / "dou.sqlite"
+    stats = build_database(
+        input_dirs=[input_dir],
+        database_path=db_path,
+        progress_interval=0,
+    )
+
+    assert stats.materias == 1
+    assert stats.materias_com_estrutura_legal == 1
+
+    with connect(db_path) as connection:
+        assert (
+            connection.execute(
+                "SELECT tem_estrutura_legal FROM materia"
+            ).fetchone()[0]
+            == 1
+        )
