@@ -1,0 +1,34 @@
+# Sistema / editor
+.DS_Store
+
+# Segredos locais
+.env
+.env.*
+!.env.example
+
+# Ambientes e caches Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build / pacote
+build/
+dist/
+*.egg-info/
+
+# Dados coletados e artefatos gerados localmente
+data/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.duckdb
+*.parquet
+*.csv
+*.tsv
+*.zip
+*.xml
